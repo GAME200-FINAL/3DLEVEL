@@ -155,7 +155,6 @@ public class PlayerController : ControllerBase
         Vector3 r = Direction.transform.right.normalized;
         //r.y = 0;
         Vector3 targetSpeed = v * f + r * h;
-        if(h==0)
         GetComponent<Rigidbody>().velocity = transform.forward * Input.GetAxis("Vertical")* moveSpeed;
         transform.Rotate(0, Input.GetAxis("Horizontal") * rotateSpeed * Time.deltaTime, 0);
         // Vector3 targetMove = targetSpeed * 
