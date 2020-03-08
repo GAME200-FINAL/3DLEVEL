@@ -5,7 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/TutorialScenes/CompletedTutorials/movingPlatformTutorial_Complete.unity
     guid: 036c1f44ab95e4b4aa22f5ce92091e90
+  - enabled: 1
+    path: Assets/3DLEVEL.unity
+    guid: 1303b85483f833b4b82e0e859d03c247
   m_configObjects: {}

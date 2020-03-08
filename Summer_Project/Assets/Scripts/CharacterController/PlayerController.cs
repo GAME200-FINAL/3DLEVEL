@@ -19,7 +19,7 @@ using UnityEngine;
 public class PlayerController : ControllerBase
 {
     Transform mainCamera;
-    Rigidbody rigidBody;
+    public Rigidbody rigidBody;
     public string footStepEvent;
     public string jumpEvent;
     public string attackEvent;
@@ -27,15 +27,20 @@ public class PlayerController : ControllerBase
     protected bool isSneaking;
     protected float capsuleRadius;
     float tGravity = -10;
-
+    public float moveSpeed;
+    public float rotateSpeed;
+    public bool isGrounded;
+    public bool falling = false;
+    public bool onRamp;
+    RaycastHit rhit;
+    public GameObject Direction;
     void Start()
     {
-        
+        Physics.gravity = new Vector3(0, tGravity, 0);
         isAttacking = false;
         isSneaking = false;
         attackTimer = 0.0f;
         distanceToGrounded = .35f;
-        rigidBody = transform.GetComponent<Rigidbody>();
         input = new ControllerInput();
         animator = transform.GetComponent<Animator>();
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").transform;
@@ -45,6 +50,7 @@ public class PlayerController : ControllerBase
 
     void Update()
     {
+        
         updateStates();
         input.read();
 
@@ -55,16 +61,16 @@ public class PlayerController : ControllerBase
             handleAttack();
         }
 
-        if (!isAttacking)
+        if (!isAttacking&&input.isGrounded)
         {
-            handleMove();
+           handleMove();
         }
 
     }
 
     private void FixedUpdate()
     {
-        rigidBody.AddForce(0, -9.8f * gravity, 0);
+       // rigidBody.AddForce(0, -9.8f * gravity, 0);
     }
 
     /*
@@ -77,11 +83,19 @@ public class PlayerController : ControllerBase
     public override void updateStates()
     {
         base.updateStates();
-
-
-        if (Physics.Raycast(transform.position + new Vector3(0, 0.15f, 0) - transform.forward * capsuleRadius, -transform.up, distanceToGrounded, groundLayer) || 
-            Physics.Raycast(transform.position + new Vector3(0, 0.15f, 0) + transform.forward * capsuleRadius, -transform.up, distanceToGrounded, groundLayer))
+        
+       
+        if (Physics.Raycast(transform.position + transform.up*0.1f - transform.forward * capsuleRadius, -transform.up,out rhit, 1, groundLayer) || 
+            Physics.Raycast(transform.position + transform.up*0.1f + transform.forward * capsuleRadius, -transform.up,out rhit, 1, groundLayer) || Physics.Raycast(transform.position, -transform.up,out rhit, 1, groundLayer))
         {
+            if (falling)
+            {
+                //transform.rotation = Quaternion.LookRotation(Vector3.Cross(rhit.normal, Vector3.Cross(transform.forward, rhit.normal)),
+                //           rhit.normal);
+                Direction.transform.rotation= transform.rotation;
+                //Camera.main.GetComponent<CamContrl>().Reset();
+                falling = false;
+            }
             input.isGrounded = true;
             hasDoubleJumped = false;
         }
@@ -90,7 +104,8 @@ public class PlayerController : ControllerBase
             input.isGrounded = false;
         }
 
-
+        isGrounded = input.isGrounded;
+        if (!isGrounded) falling = true;
         animator.SetBool("IsGrounded", input.isGrounded);
     }
 
@@ -109,8 +124,7 @@ public class PlayerController : ControllerBase
             Vector3 jumpForce = new Vector3(0, jumpSpeed * FORCE_MOD, 0);
             jumpForce += transform.forward * speedMod * forwardJumpForce * FORCE_MOD;
            // rigidBody.AddForce(jumpForce);
-            tGravity = -tGravity;
-            Physics.gravity = new Vector3(0, tGravity, 0);
+           
         }
 
         //if (input.doubleJump && !hasDoubleJumped && canDoubleJump)
@@ -133,47 +147,65 @@ public class PlayerController : ControllerBase
      */   
     public override void handleMove()
     {
-        base.handleMove();
-
-        /* 
+        // base.handleMove();
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
+        Vector3 f = Direction.transform.forward.normalized;
+        //f.y = 0;
+        Vector3 r = Direction.transform.right.normalized;
+        //r.y = 0;
+        Vector3 targetSpeed = v * f + r * h;
+        if(h==0)
+        GetComponent<Rigidbody>().velocity = transform.forward * Input.GetAxis("Vertical")* moveSpeed;
+        transform.Rotate(0, Input.GetAxis("Horizontal") * rotateSpeed * Time.deltaTime, 0);
+        // Vector3 targetMove = targetSpeed * 
+        //animator.SetFloat("Speed", Mathf.Sqrt(v * v + h * h));
+        //onRamp = isOnRamp();
+        //if (onRamp)
+        //{
+        //    transform.rotation = Quaternion.LookRotation(Vector3.Cross(rhit.normal, Vector3.Cross(transform.forward, rhit.normal)),
+        //                   rhit.normal);
+        //}
+        /* {
          * Turn the character using Quaternions to avoid gimbal lock and 0/360 wraparound issues that come from using Eular angles
          * The heading is multiplied by the camera's rotation in order to get the player character to move relative to the camera's 
          * rotation. Zeroing out the x and z components ensures that the character is only moved in relation to the camera's rotaion
          * around the y axis.
          */
-        if (input.throttle > input.deadZone)
-        {
-            Quaternion cameraRotation = mainCamera.rotation;
-            cameraRotation.x = 0;
-            cameraRotation.z = 0;
+        //if (input.throttle > input.deadZone)
+        //{
+        //    Quaternion cameraRotation = mainCamera.rotation;
+        //    cameraRotation.x = 0;
+        //    cameraRotation.z = 0;
 
-            Quaternion targetRotation = Quaternion.AngleAxis(input.heading, new Vector3(0, 1, 0)) * cameraRotation;
+        //    Quaternion targetRotation = Quaternion.AngleAxis(input.heading, new Vector3(0, 1, 0)) * cameraRotation;
 
-            float rotationGap = Mathf.Abs(targetRotation.eulerAngles.y - transform.rotation.eulerAngles.y);
+        //    float rotationGap = Mathf.Abs(targetRotation.eulerAngles.y - transform.rotation.eulerAngles.y);
 
-            //The less than 190 is to ensure that we are not doing the instant turn on any 0 to 360 wrap around
-            if (rotationGap > instantTurnAngle && rotationGap < 190)
-            {
-                transform.rotation = targetRotation;
-            }
-            else
-            {
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-            }
-        }
+        //    //The less than 190 is to ensure that we are not doing the instant turn on any 0 to 360 wrap around
+        //    if (rotationGap > instantTurnAngle && rotationGap < 190)
+        //    {
+        //        transform.rotation = targetRotation;
+        //    }
+        //    else
+        //    {
+        //        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+        //    }
+        //}
+
 
         //Move the player character, and set the speed parameter in the animator to make sure the right blend state is played
-        float speedMod;
+        //float speedMod;
 
-        //if the character is sneaking reduce the max speed to 3/5 it's origional amount
-        if (isSneaking)
-        {
-            speedMod = input.throttle * input.throttle * Time.deltaTime * (maxSpeed * 3.0f/5.0f);
-        }
-        else
-        {
-            speedMod = input.throttle * input.throttle * Time.deltaTime * maxSpeed;
-        }
+        ////if the character is sneaking reduce the max speed to 3/5 it's origional amount
+        //if (isSneaking)
+        //{
+        //    speedMod = input.throttle * input.throttle * Time.deltaTime * (maxSpeed * 3.0f/5.0f);
+        //}
+        //else
+        //{
+        //    speedMod = input.throttle * input.throttle * Time.deltaTime * maxSpeed;
+        //}
 
 
         //if (input.isGrounded)
@@ -198,7 +230,16 @@ public class PlayerController : ControllerBase
 
         if (input.attack && !isAttacking)
         {
-            rigidBody.velocity = Vector3.zero;
+            GetComponent<Rigidbody>().velocity = new Vector3(0, 0, 0);
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+           if( Physics.Raycast(ray, out hit))
+            {
+                Physics.gravity = -hit.normal * 10;
+            }
+            Physics.gravity = Camera.main.transform.forward*10;
+            Quaternion targetRotation = Quaternion.LookRotation(Camera.main.transform.forward);
+            transform.rotation = targetRotation * Quaternion.Euler(-90, 0, 0);
             isAttacking = true;
 
             animator.Play("Attack");
@@ -236,16 +277,16 @@ public class PlayerController : ControllerBase
         }
     }
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        foreach (ContactPoint contact in collision.contacts)
-        {
-            if (contact.point.y > transform.position.y && contact.point.y - transform.position.y < stepUpHeight)
-            {
-                transform.position = new Vector3(transform.position.x, contact.point.y, transform.position.z);
-            }
-        }
-    }
+    //private void OnCollisionEnter(Collision collision)
+    //{
+    //    foreach (ContactPoint contact in collision.contacts)
+    //    {
+    //        if (contact.point.y > transform.position.y && contact.point.y - transform.position.y < stepUpHeight)
+    //        {
+    //            transform.position = new Vector3(transform.position.x, contact.point.y, transform.position.z);
+    //        }
+    //    }
+    //}
 
     public override void freezeMovement()
     {
@@ -281,6 +322,10 @@ public class PlayerController : ControllerBase
     void PlayAttack()
     {
         AudioManager.PlaySound(attackEvent, gameObject);
+    }
+    public bool isOnRamp()
+    {
+        return (Physics.Raycast(transform.position + transform.up*0.1f, -transform.up, out rhit, 2f, 1 << 9));
     }
 }
 
@@ -325,10 +370,11 @@ public class ControllerInput : VirtualInput
                 doubleJump = true;
             }
 
-            if (Input.GetButtonDown("Fire1") && isGrounded)
+            if (Input.GetButtonDown("Fire1"))
             {
                 attack = true;
             }
         }
     }
+  
 }
