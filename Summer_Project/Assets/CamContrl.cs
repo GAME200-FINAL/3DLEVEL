@@ -20,7 +20,7 @@ public class CamContrl : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        transform.Rotate(Input.GetAxis("Mouse Y"), Input.GetAxis("Mouse X"), 0);
+        transform.Rotate(-Input.GetAxis("Mouse Y")*SpeedY*Time.deltaTime, Input.GetAxis("Mouse X")*SpeedX*Time.deltaTime, 0);
      
             tPosition = tRotation * (-transform.forward * 10 + transform.up * 2) + Target.transform.position;
             transform.position = tPosition;

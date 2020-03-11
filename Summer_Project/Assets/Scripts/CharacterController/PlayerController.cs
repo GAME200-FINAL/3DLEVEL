@@ -34,6 +34,8 @@ public class PlayerController : ControllerBase
     public bool onRamp;
     RaycastHit rhit;
     public GameObject Direction;
+    Ray ray;
+    public GameObject drawPos;
     void Start()
     {
         Physics.gravity = new Vector3(0, tGravity, 0);
@@ -65,6 +67,10 @@ public class PlayerController : ControllerBase
         {
            handleMove();
         }
+        ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        GetComponent<LineRenderer>().SetPosition(0, drawPos.transform.position);
+        GetComponent<LineRenderer>().SetPosition(1, ray.origin+ ray.direction * 50);
+        //
 
     }
 
@@ -90,8 +96,8 @@ public class PlayerController : ControllerBase
         {
             if (falling)
             {
-                //transform.rotation = Quaternion.LookRotation(Vector3.Cross(rhit.normal, Vector3.Cross(transform.forward, rhit.normal)),
-                //           rhit.normal);
+                transform.rotation = Quaternion.LookRotation(Vector3.Cross(rhit.normal, Vector3.Cross(transform.forward, rhit.normal)),
+                        rhit.normal);
                 Direction.transform.rotation= transform.rotation;
                 //Camera.main.GetComponent<CamContrl>().Reset();
                 falling = false;
@@ -230,13 +236,12 @@ public class PlayerController : ControllerBase
         if (input.attack && !isAttacking)
         {
             GetComponent<Rigidbody>().velocity = new Vector3(0, 0, 0);
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
            if( Physics.Raycast(ray, out hit))
             {
-                Physics.gravity = -hit.normal * 10;
+                Physics.gravity = hit.collider.gameObject.transform.position - transform.position;
             }
-            Physics.gravity = Camera.main.transform.forward*10;
+            //Physics.gravity = Camera.main.transform.forward*10;
             Quaternion targetRotation = Quaternion.LookRotation(Camera.main.transform.forward);
             transform.rotation = targetRotation * Quaternion.Euler(-90, 0, 0);
             isAttacking = true;
